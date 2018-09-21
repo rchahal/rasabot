@@ -5,7 +5,8 @@ from __future__ import unicode_literals
 
 import argparse
 
-from bot_server_channel import BotServerInputChannel
+from .bot_server_channel import BotServerInputChannel
+from rasa_core.channels.channel import RestInput
 
 from rasa_core.agent import Agent
 from rasa_core.interpreter import RasaNLUInterpreter
@@ -60,5 +61,5 @@ if __name__ == "__main__":
                                  cmdline_args.log_file)
 
     agent = Agent.load(cmdline_args.core, RasaNLUInterpreter(cmdline_args.nlu))
-    channel = BotServerInputChannel(agent, port=cmdline_args.port)
-    agent.handle_channels([channel])
+    channel = BotServerInputChannel(agent)
+    agent.handle_channels([channel], cmdline_args.port)
