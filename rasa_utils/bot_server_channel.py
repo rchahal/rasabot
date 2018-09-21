@@ -5,6 +5,7 @@ from __future__ import unicode_literals
 
 import json
 from flask import Blueprint, jsonify, request, Response
+from flask_cors import CORS
 from multiprocessing import Queue
 from threading import Thread
 from collections import defaultdict
@@ -127,6 +128,8 @@ class BotServerInputChannel(InputChannel):
     def blueprint(self, on_new_message):
         custom_webhook = Blueprint('custom_webhook', __name__)
 
+        CORS(custom_webhook)
+
         @custom_webhook.route("/health", methods=['GET'])
         def health():
             return jsonify({"status": "ok"})
@@ -138,12 +141,15 @@ class BotServerInputChannel(InputChannel):
         @custom_webhook.route("/conversations/<cid>/log", methods=['GET'])
         def show_log(cid):
             #request.setHeader("Content-Type", "application/json")
+            print("--- Log")
+            print(self.message_store[cid])
+            print("---")
             return json.dumps(self.message_store[cid])
 
         @custom_webhook.route("/conversations/<cid>/say", methods=['GET'])
         def say(cid):
-            print("## request.args ->")
-            print(request.args)
+            #print("## request.args ->")
+            #print(request.args)
             message = request.args["message"]
             #_payload = request.args["payload"]
             #_display_name = request.args["display_name"]
@@ -166,6 +172,7 @@ class BotServerInputChannel(InputChannel):
                     self.message_store.log(
                         cid, cid, {"type": "text", "text": message}
                     )
+
                 should_use_stream = utils.bool_arg("stream", default=False)
 
                 if should_use_stream:
@@ -175,7 +182,13 @@ class BotServerInputChannel(InputChannel):
                 else:
                     collector = CollectingOutputChannel()
                     on_new_message(UserMessage(message, collector, cid))
-                    print(collector.messages)
+                    #print("$$$ Bot response")
+                    #print(collector.messages)
+                    for msg in collector.messages:
+                        recipient_id = msg['recipient_id']
+                        res_message = msg['text']
+                        self.message_store.log(cid, "bot", {"type": "text", "text": res_message}, recipient_id)
+                    # the return here is for sync fetch testing
                     return jsonify(collector.messages)
 
         return custom_webhook
