@@ -10,6 +10,7 @@ from rasa_core.channels.channel import RestInput
 
 from rasa_core.agent import Agent
 from rasa_core.interpreter import RasaNLUInterpreter
+from rasa_core.utils import EndpointConfig
 from rasa_core import utils
 import os
 
@@ -29,6 +30,12 @@ def create_argparser():
         '-u', '--nlu',
         type=str,
         help="nlu model to run")
+
+    parser.add_argument(
+        '-e', '--endpoints',
+        default="http://localhost:5055/webhook",
+        type=str,
+        help="custom action endpoints")
 
     parser.add_argument(
         '-p', '--port',
@@ -60,6 +67,8 @@ if __name__ == "__main__":
     utils.configure_file_logging(cmdline_args.loglevel,
                                  cmdline_args.log_file)
 
-    agent = Agent.load(cmdline_args.core, RasaNLUInterpreter(cmdline_args.nlu))
+    agent = Agent.load(cmdline_args.core, 
+        RasaNLUInterpreter(cmdline_args.nlu), 
+        action_endpoint=EndpointConfig(url=cmdline_args.endpoints))
     channel = BotServerInputChannel(agent)
     agent.handle_channels([channel], cmdline_args.port)

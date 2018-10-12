@@ -10,6 +10,7 @@ intents:
 
 actions:
 - utter_cra_call_back_number
+- action_cra_call_back_number
 - utter_ask_incident_date
 - utter_ask_agent_badge_number
 - utter_cra_scam
@@ -20,7 +21,7 @@ actions:
 
 templates:
   utter_cra_call_back_number:
-  - text: "What is the call back number that the CRA agent gave you?"
+  - text: "utter - What is the call back number that the CRA agent gave you?"
   utter_ask_incident_date:
   - text: "When did the CRA agent call you?"
   utter_ask_agent_badge_number:

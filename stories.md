@@ -1,6 +1,7 @@
 ## CRA Scam
 * cra_scam
   - utter_cra_call_back_number
+  - action_cra_call_back_number
 * phone_number
   - utter_ask_incident_date
 * incident_date
