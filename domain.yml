@@ -1,31 +1,37 @@
 intents:
-  - greet
-  - goodbye
-  - mood_affirm
-  - mood_deny
-  - mood_great
-  - mood_unhappy
+  - cra_scam
+  - phone_number
+  - incident_date
+  - cra_agent_id
+  - romance_fraud
+  - money_lost
+  - ransomware
+  - money_demanded
 
 actions:
-- utter_greet
-- utter_cheer_up
-- utter_did_that_help
-- utter_happy
-- utter_goodbye
+- utter_cra_call_back_number
+- utter_ask_incident_date
+- utter_ask_agent_badge_number
+- utter_cra_scam
+- utter_ask_money_lost
+- utter_romance_fraud
+- utter_ask_money_demanded
+- utter_ransomware
 
 templates:
-  utter_greet:
-  - text: "Hey! How are you?"
-
-  utter_cheer_up:
-  - text: "Here is something to cheer you up:"
-    image: "https://i.imgur.com/nGF1K8f.jpg"
-
-  utter_did_that_help:
-  - text: "Did that help you?"
-
-  utter_happy:
-  - text: "Great carry on!"
-
-  utter_goodbye:
-  - text: "Bye"
+  utter_cra_call_back_number:
+  - text: "What is the call back number that the CRA agent gave you?"
+  utter_ask_incident_date:
+  - text: "When did the CRA agent call you?"
+  utter_ask_agent_badge_number:
+  - text: "What is the CRA agent badge number?"
+  utter_cra_scam:
+  - text: "Most likely you are the victim of CRA scam."
+  utter_ask_money_lost:
+  - text: "How much money did you lose?."
+  utter_romance_fraud:
+  - text: "You are the victim of romance fraud."
+  utter_ask_money_demanded:
+  - text: "How much do you need to pay to unlocke your computer?"
+  utter_ransomware:
+  - text: "You are the victim of ransomware attack."

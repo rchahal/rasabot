@@ -1,50 +1,25 @@
-## intent:greet
-- hey
-- hello
-- hi
-- good morning
-- good evening
-- hey there
-
-## intent:goodbye
-- bye
-- goodbye
-- see you around
-- see you later
-
-## intent:mood_affirm
-- yes
-- indeed
-- of course
-- that sounds good
-- correct
-
-## intent:mood_deny
-- no
-- never
-- I don't think so
-- don't like that
-- no way
-- not really
-
-## intent:mood_great
-- perfect
-- very good
-- great
-- amazing
-- wonderful
-- I am feeling very good
-- I am great
-- I'm good
-
-## intent:mood_unhappy
-- sad
-- very sad
-- unhappy
-- bad
-- very bad
-- awful
-- terrible
-- not very good
-- extremly sad
-- so sad
+## intent: cra_scam
+- cra
+- tax 
+## intent: phone_number
+- The call back number is 1-888-111-2222
+- The number that they gave me was 1-888-111-2222
+## intent: incident_date
+- They called me on Oct 1, 2018
+- It was Oct 1, 2018
+- Oct 3, 2018
+## intent: cra_agent_id
+- His badge number is 1234
+- Her badge number is 1234
+- 1234
+## intent: romance_fraud
+- My girlfriend is a con artist
+- My boyfriend is a con artist
+## intent: money_lost
+- I lost over 2000 dollars
+- I have lost over 2000 dollars
+## intent: ransomware
+- My computer is locked
+- Someone locked my computer
+## intent: money_demanded
+- They ask for 500 dollars in bitcoin
