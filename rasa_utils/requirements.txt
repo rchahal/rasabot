@@ -1,4 +1,5 @@
-klein
-twisted
+flask
+flask_cors
 rasa_core
 rasa_nlu[tensorflow]
+rasa_core_sdk

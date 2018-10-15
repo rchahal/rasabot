@@ -3,20 +3,16 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
-import json
-from flask import Blueprint, jsonify, request, Response
-from flask_cors import CORS
-from multiprocessing import Queue
-from threading import Thread
 from collections import defaultdict
 from datetime import datetime
+import json
 import logging
 from uuid import uuid4
+from flask import Blueprint, jsonify, request, Flask, Response, make_response
+from flask_cors import CORS
 
-from rasa_core import utils
-from rasa_nlu.server import check_cors
 from rasa_core.channels.channel import UserMessage
-from rasa_core.channels.channel import InputChannel, OutputChannel, QueueOutputChannel, CollectingOutputChannel
+from rasa_core.channels.channel import InputChannel, OutputChannel
 from rasa_core.events import SlotSet
 
 logger = logging.getLogger()
@@ -64,7 +60,10 @@ class BotServerOutputChannel(OutputChannel):
         self.message_store = message_store
 
     def send_text_message(self, recipient_id, message):
-        self.message_store.log(recipient_id, "bot", {"type": "text", "text": message})
+        for message_part in message.split("\n\n"):
+            self.message_store.log(
+                recipient_id, "bot", {"type": "text", "text": message_part}
+            )
 
     def send_text_with_buttons(self, recipient_id, message, buttons, **kwargs):
         # type: (Text, Text, List[Dict[Text, Any]], **Any) -> None
@@ -86,9 +85,9 @@ class BotServerOutputChannel(OutputChannel):
 
 
 class BotServerInputChannel(InputChannel):
-    
+
     def __init__(
-        self, agent, message_store=FileMessageStore()
+        self, agent=None, preprocessor=None, port=5002, message_store=FileMessageStore()
     ):
         logging.basicConfig(level="DEBUG")
         logging.captureWarnings(True)
@@ -96,67 +95,70 @@ class BotServerInputChannel(InputChannel):
         self.on_message = lambda x: None
         self.cors_origins = [u'*']
         self.agent = agent
+        self.port = port
+        self.preprocessor = preprocessor
 
     @classmethod
     def name(cls):
         return "bot"
 
-    @staticmethod
-    def on_message_wrapper(on_new_message, text, queue, sender_id):
-        collector = QueueOutputChannel(queue)
-
-        message = UserMessage(text, collector, sender_id)
-        on_new_message(message)
-
-        queue.put("DONE")
-
-    def stream_response(self, on_new_message, text, sender_id):
-        from multiprocessing import Queue
-
-        q = Queue()
-
-        t = Thread(target=self.on_message_wrapper,
-                   args=(on_new_message, text, q, sender_id))
-        t.start()
-        while True:
-            response = q.get()
-            if response == "DONE":
-                break
-            else:
-                yield json.dumps(response) + "\n"
-    
     def blueprint(self, on_new_message):
-        custom_webhook = Blueprint('custom_webhook', __name__)
+        bot_server_webhook = Blueprint('bot_server_webhook', __name__)
+        CORS(bot_server_webhook)
 
-        CORS(custom_webhook)
-
-        @custom_webhook.route("/health", methods=['GET'])
+        @bot_server_webhook.route("/health", methods=["GET"])
         def health():
-            return jsonify({"status": "ok"})
+            return "healthy"
 
-        @custom_webhook.route("/", methods=['GET'])
-        def default():
-            return jsonify({"component": "bot"})
-        
-        @custom_webhook.route("/conversations/<cid>/log", methods=['GET'])
+        @bot_server_webhook.route("/webhook", methods=['POST'])
+        def receive():
+            sender_id = self._extract_sender(request)
+            text = self._extract_message(request)
+            should_use_stream = utils.bool_arg("stream", default=False)
+
+            if should_use_stream:
+                return Response(
+                        self.stream_response(on_new_message, text, sender_id),
+                        content_type='text/event-stream')
+            else:
+                collector = CollectingOutputChannel()
+                on_new_message(UserMessage(text, collector, sender_id))
+                return json.dumps(collector.messages)
+
+        @bot_server_webhook.route("/conversations/<cid>/log", methods=["GET"])
         def show_log(cid):
-            #request.setHeader("Content-Type", "application/json")
-            print("--- Log")
-            print(self.message_store[cid])
-            print("---")
             return json.dumps(self.message_store[cid])
 
-        @custom_webhook.route("/conversations/<cid>/say", methods=['GET'])
+        @bot_server_webhook.route("/conversations/<cid>/tracker", methods=["GET"])
+        def tracker(cid):
+            if self.agent:
+                tracker = self.agent.tracker_store.get_or_create_tracker(cid)
+                tracker_state = tracker.current_state(
+                    should_include_events=True,
+                    only_events_after_latest_restart=True
+                )
+
+                return json.dumps(tracker_state)
+            else:
+                return make_response("Could not access agent", 400)
+
+        @bot_server_webhook.route("/conversations/<cid>/say", methods=["GET"])
         def say(cid):
-            #print("## request.args ->")
-            #print(request.args)
-            message = request.args["message"]
-            #_payload = request.args["payload"]
-            #_display_name = request.args["display_name"]
-            _uuid = request.args["uuid"]
+            message = bytes(request.args.get("message", default=""), "utf8")
+            _payload = bytes(request.args.get("payload", default=""), "utf8")
+            _display_name = bytes(request.args.get("display_name", default=""), "utf8")
+            _uuid = bytes(request.args.get("uuid", default=""), "utf8")
             logger.info(message)
 
-            tracker = self.agent.tracker_store.get_or_create_tracker(cid)
+            if len(_display_name) > 0 and self.agent:
+                display_name, = _display_name
+                tracker = self.agent.tracker_store.get_or_create_tracker(cid)
+                if (
+                    "display_name" in tracker.current_slot_values()
+                    and tracker.get_slot("display_name") != display_name
+                ):
+                    tracker.update(SlotSet("display_name", display_name.decode("utf-8")))
+                    self.agent.tracker_store.save(tracker)
 
             if message == "_restart":
                 self.message_store.clear(cid)
@@ -165,33 +167,27 @@ class BotServerInputChannel(InputChannel):
                     self.message_store.log(
                         cid,
                         cid,
-                        {"type": "text", "text": message},
-                        _uuid,
+                        {"type": "text", "text": message.decode("utf-8")},
+                        _uuid.decode("utf-8"),
                     )
-                else:
-                    self.message_store.log(
-                        cid, cid, {"type": "text", "text": message}
-                    )
+            if len(_payload) > 0:
+                on_new_message(
+                    UserMessage(
+                        _payload.decode("utf-8"),
+                        output_channel=BotServerOutputChannel(self.message_store),
+                        sender_id=cid,
+                    ),
+                    preprocessor=self.preprocessor
+                )
+            else:
+                on_new_message(
+                    UserMessage(
+                        message.decode("utf-8"),
+                        output_channel=BotServerOutputChannel(self.message_store),
+                        sender_id=cid,
+                    ),
+                    preprocessor=self.preprocessor
+                )
+            return make_response("OK", 200)
 
-                should_use_stream = utils.bool_arg("stream", default=False)
-
-                if should_use_stream:
-                    return Response(
-                        self.stream_response(on_new_message, message, cid),
-                        content_type='text/event-stream')
-                else:
-                    collector = CollectingOutputChannel()
-                    on_new_message(UserMessage(message, collector, cid))
-                    #print("$$$ Bot response")
-                    #print(collector.messages)
-                    for msg in collector.messages:
-                        recipient_id = msg['recipient_id']
-                        res_message = msg['text']
-                        self.message_store.log(cid, "bot", {"type": "text", "text": res_message}, recipient_id)
-                    # the return here is for sync fetch testing
-                    return jsonify(collector.messages)
-
-        return custom_webhook
-
-
-
+        return bot_server_webhook
