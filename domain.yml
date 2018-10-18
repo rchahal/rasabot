@@ -21,18 +21,18 @@ actions:
 
 templates:
   utter_cra_call_back_number:
-  - text: "utter - What is the call back number that the CRA agent gave you?"
+  - text: "What is the call back number that the CRA agent gave you?"
   utter_ask_incident_date:
   - text: "When did the CRA agent call you?"
   utter_ask_agent_badge_number:
-  - text: "What is the CRA agent badge number?"
+  - text: "Did the CRA agent give you a badge number?  What is it?"
   utter_cra_scam:
-  - text: "Most likely you are the victim of CRA scam."
+  - text: "You are the victim of CRA scam."
   utter_ask_money_lost:
   - text: "How much money did you lose?."
   utter_romance_fraud:
   - text: "You are the victim of romance fraud."
   utter_ask_money_demanded:
-  - text: "How much do you need to pay to unlocke your computer?"
+  - text: "How much do you need to pay to unlock your computer?"
   utter_ransomware:
-  - text: "You are the victim of ransomware attack."
+  - text: "You are the victim of a ransomware attack."
